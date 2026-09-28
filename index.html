@@ -55,6 +55,26 @@
         <button class="btn-primary" onclick="switchTab('form')">+ Laporan BA Baru</button>
       </div>
 
+      <!-- STATISTIK / SUMMARY BAR (Dinamis Sesuai Filter) -->
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-card">
+      <span class="summary-label">Total Laporan BA</span>
+      <span class="summary-value" id="statTotalBa">0</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Total Qty Rusak</span>
+      <span class="summary-value" id="statTotalQty">0 Pcs</span>
+    </div>
+    <div class="summary-card status-open">
+      <span class="summary-label">Status OPEN</span>
+      <span class="summary-value" id="statTotalOpen">0</span>
+    </div>
+    <div class="summary-card status-close">
+      <span class="summary-label">Status CLOSE</span>
+      <span class="summary-value" id="statTotalClose">0</span>
+    </div>
+  </div>
+
       <div id="loadingCards" class="loading-state">
         <div class="spinner"></div>
         <p>Memuat data laporan...</p>
