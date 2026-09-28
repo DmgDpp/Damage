@@ -124,7 +124,10 @@ function renderCards(reports) {
       : 'https://via.placeholder.com/400x200?text=Foto+Kerusakan';
 
     const typeClass = item.tipeDamage ? item.tipeDamage.toLowerCase() : 'inbound';
-    const statusClass = item.statusBap ? item.statusBap.toLowerCase() : 'open';
+    
+    // Default jika data sheet lama belum ada isinya -> set 'Open'
+    const currentStatus = item.statusBap && item.statusBap !== "" ? item.statusBap : "Open";
+    const statusClass = currentStatus.toLowerCase();
 
     let actionButtons = '';
     if (isAdminLoggedIn) {
@@ -144,7 +147,7 @@ function renderCards(reports) {
     card.innerHTML = `
       <div class="card-media">
         <img src="${photoSrc}" alt="${item.sku}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x200?text=Foto+Gagal+Dimuat'">
-        <span class="badge-status ${statusClass}">BAP: ${item.statusBap}</span>
+        <span class="badge-status ${statusClass}">BAP: ${currentStatus}</span>
         <span class="badge-type ${typeClass}">${item.tipeDamage}</span>
       </div>
       <div class="card-body">
@@ -155,7 +158,7 @@ function renderCards(reports) {
           <span><strong>BA:</strong> ${item.noBa}</span>
         </div>
         
-        ${item.statusBap === 'Close' ? `<div class="card-resolution">🤝 Penyelesaian: <u>${item.penyelesaian}</u></div>` : ''}
+        ${currentStatus === 'Close' ? `<div class="card-resolution">🤝 Penyelesaian: <u>${item.penyelesaian || 'Tarik Pabrik'}</u></div>` : ''}
 
         <div class="card-keterangan">
           <strong>Kronologi / Keterangan:</strong><br>
