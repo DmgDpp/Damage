@@ -251,6 +251,36 @@ function deleteReport(rowIndex) {
   document.body.appendChild(script);
 }
 
+// Fungsi Menghitung & Memperbarui Tampilan Ringkasan Statistik
+function updateSummary(reports) {
+  const totalBa = reports.length;
+  
+  let totalQty = 0;
+  let totalOpen = 0;
+  let totalClose = 0;
+
+  reports.forEach(item => {
+    // Total Qty
+    const qtyVal = parseInt(item.qty) || 0;
+    totalQty += qtyVal;
+
+    // Total Status BAP
+    const status = (item.statusBap || "Open").toLowerCase();
+    if (status === "close") {
+      totalClose++;
+    } else {
+      totalOpen++;
+    }
+  });
+
+  // Render Angka ke HTML
+  document.getElementById('statTotalBa').textContent = totalBa;
+  document.getElementById('statTotalQty').textContent = `${totalQty} Pcs`;
+  document.getElementById('statTotalOpen').textContent = totalOpen;
+  document.getElementById('statTotalClose').textContent = totalClose;
+}
+
+// Perbarui Fungsi applyFilters() untuk memanggil updateSummary
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
   const selectedType = document.getElementById('typeFilter').value;
@@ -264,12 +294,14 @@ function applyFilters() {
       (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm));
 
     const matchesType = (selectedType === 'ALL') || (item.tipeDamage === selectedType);
-    const matchesStatus = (selectedStatus === 'ALL') || (item.statusBap === selectedStatus);
+    const matchesStatus = (selectedStatus === 'ALL') || ((item.statusBap || "Open") === selectedStatus);
 
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  // Render Kartu & Ringkasan Statistik
   renderCards(filtered);
+  updateSummary(filtered);
 }
 
 const fileToBase64 = file => new Promise((resolve, reject) => {
