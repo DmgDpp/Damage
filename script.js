@@ -1,6 +1,6 @@
 // GANTI DENGAN SPREADSHEET ID & WEB APP URL ANDA
 const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg";
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLGmD-beTJkCJc5NfGHBODebnwJ_YZJEBS01spupR6BNLtIu3A5nY6yqhHeNEvAR-mdQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZeZ9y2G8_Lvnv160u_T9pjyz7pwMNSx6lgHO6tNjWAU683wphToNTm2BO8QBTOemeIg/exec";
 
 let allReports = [];
 let isAdminLoggedIn = false;
@@ -176,66 +176,60 @@ function closeEditModal() {
   document.getElementById('editModal').classList.add('hidden');
 }
 
-// Submit Update (Edit)
-async function handleEditSubmit(event) {
+// Submit Edit Data via JSONP
+function handleEditSubmit(event) {
   event.preventDefault();
   const btnSave = document.getElementById('btnSaveEdit');
   btnSave.disabled = true;
   btnSave.textContent = '⏳ Menyimpan...';
 
-  const payload = {
-    action: "UPDATE",
-    rowIndex: document.getElementById('editRowIndex').value,
-    project: document.getElementById('editProject').value,
-    tipeDamage: document.getElementById('editTipe').value,
-    sku: document.getElementById('editSku').value,
-    qty: document.getElementById('editQty').value,
-    keterangan: document.getElementById('editKeterangan').value
-  };
+  const rowIndex = document.getElementById('editRowIndex').value;
+  const project = encodeURIComponent(document.getElementById('editProject').value);
+  const tipeDamage = encodeURIComponent(document.getElementById('editTipe').value);
+  const sku = encodeURIComponent(document.getElementById('editSku').value);
+  const qty = encodeURIComponent(document.getElementById('editQty').value);
+  const keterangan = encodeURIComponent(document.getElementById('editKeterangan').value);
 
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+  const editUrl = `${SCRIPT_URL}?action=UPDATE&rowIndex=${rowIndex}&project=${project}&tipeDamage=${tipeDamage}&sku=${sku}&qty=${qty}&keterangan=${keterangan}&callback=onEditComplete`;
 
-    showToast("Data laporan berhasil diperbarui!");
-    closeEditModal();
-    setTimeout(loadReports, 2500);
-  } catch (err) {
-    alert("Gagal memperbarui data.");
-  } finally {
+  window.onEditComplete = function(response) {
     btnSave.disabled = false;
     btnSave.textContent = 'Simpan Perubahan';
-  }
+    closeEditModal();
+
+    if (response && response.result === 'success') {
+      showToast("Data laporan berhasil diperbarui!");
+      setTimeout(loadReports, 1000);
+    } else {
+      alert("Gagal memperbarui data: " + (response ? response.error : "Unknown error"));
+    }
+  };
+
+  const script = document.createElement('script');
+  script.src = editUrl;
+  document.body.appendChild(script);
 }
 
-// Hapus Report Data
-async function deleteReport(rowIndex) {
+// Hapus Data via JSONP
+function deleteReport(rowIndex) {
   if (!confirm("Apakah Anda yakin ingin menghapus laporan barang damage ini?")) return;
 
   showToast("⏳ Menghapus data laporan...");
 
-  const payload = {
-    action: "DELETE",
-    rowIndex: rowIndex
+  const deleteUrl = `${SCRIPT_URL}?action=DELETE&rowIndex=${rowIndex}&callback=onDeleteComplete`;
+
+  window.onDeleteComplete = function(response) {
+    if (response && response.result === 'success') {
+      showToast("Data berhasil dihapus!");
+      setTimeout(loadReports, 1000);
+    } else {
+      alert("Gagal menghapus data: " + (response ? response.error : "Unknown error"));
+    }
   };
 
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    showToast("Data berhasil dihapus!");
-    setTimeout(loadReports, 2500);
-  } catch (err) {
-    alert("Gagal menghapus data.");
-  }
+  const script = document.createElement('script');
+  script.src = deleteUrl;
+  document.body.appendChild(script);
 }
 
 // Filter Search & Category
