@@ -55,6 +55,7 @@ function toggleAdminLogin() {
   }
 }
 
+// BACA DATA DARI GOOGLE SHEETS
 async function loadReports() {
   const loading = document.getElementById('loadingCards');
 
@@ -101,7 +102,10 @@ async function loadReports() {
     });
 
     loading.classList.add('hidden');
+    
+    // RENDER KARTU DAN PERBARUI ANGKA SUMMARY
     renderCards(allReports);
+    updateSummary(allReports); 
 
   } catch (err) {
     console.error("Error reading sheets:", err);
@@ -260,12 +264,18 @@ function updateSummary(reports) {
   let totalClose = 0;
 
   reports.forEach(item => {
-    // Total Qty
-    const qtyVal = parseInt(item.qty) || 0;
-    totalQty += qtyVal;
+    // Ambil hanya karakter angka dari string Qty (misal: "3 Pcs" -> 3)
+    let qtyNum = 0;
+    if (item.qty) {
+      const match = item.qty.toString().match(/\d+/);
+      if (match) {
+        qtyNum = parseInt(match[0], 10);
+      }
+    }
+    totalQty += qtyNum;
 
-    // Total Status BAP
-    const status = (item.statusBap || "Open").toLowerCase();
+    // Hitung Status BAP
+    const status = (item.statusBap || "Open").toString().trim().toLowerCase();
     if (status === "close") {
       totalClose++;
     } else {
@@ -273,7 +283,7 @@ function updateSummary(reports) {
     }
   });
 
-  // Render Angka ke HTML
+  // Tampilkan angka ke kotak Summary
   document.getElementById('statTotalBa').textContent = totalBa;
   document.getElementById('statTotalQty').textContent = `${totalQty} Pcs`;
   document.getElementById('statTotalOpen').textContent = totalOpen;
