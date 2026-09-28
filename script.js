@@ -1,7 +1,7 @@
-// GANTI DENGAN WEB APP URL DARI GOOGLE APPS SCRIPT ANDA
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhTiIkkuyY52jLOVCNDf0Lu0EmuMWZWn_lEDmKBUQlktxyLPVo-5b4-S_4rLT53caFag/exec";
+// Paste URL Web App /exec Anda dari Langkah 2 di sini
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUaUcHmPU-W0s3ozCl9mnhNjR9UlUZtnQN-cEI4bsHRLPNsc88OhiZsoOxWs0BfexO3Q/exec";
 
-// Sample / Mock Data jika API belum dikonfigurasi
+// Sample / Mock Data jika URL belum diisi
 const MOCK_DATA = [
   {
     timestamp: "2026-09-28",
@@ -10,40 +10,15 @@ const MOCK_DATA = [
     tipeDamage: "Inbound",
     sku: "NK-AIR-MAX-90 (Sepatu Running Air Max)",
     qty: 12,
-    keterangan: "Dus luar hancur basah terendam air hujan saat pembongkaran (unloading) dari truk kontainer vendor.",
-    folderLink: "https://drive.google.com",
-    pdfLink: "https://drive.google.com",
+    keterangan: "Dus luar hancur basah terendam air hujan saat pembongkaran dari kontainer.",
+    folderLink: "#",
+    pdfLink: "#",
     photos: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80"]
-  },
-  {
-    timestamp: "2026-09-28",
-    project: "Project Shopee Megahub",
-    noBa: "BA-2026-092",
-    tipeDamage: "Handling",
-    sku: "ELEC-TV-55-4K (Smart TV 55 Inch)",
-    qty: 2,
-    keterangan: "Layar retak akibat terjatuh dari forklift saat aktivitas penyusunan rack di Zone C Warehouse.",
-    folderLink: "https://drive.google.com",
-    pdfLink: "https://drive.google.com",
-    photos: ["https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=600&q=80"]
-  },
-  {
-    timestamp: "2026-09-27",
-    project: "Project Unilever Logistics",
-    noBa: "BA-2026-095",
-    tipeDamage: "Handling",
-    sku: "HGC-SOAP-500ML (Liquid Soap Refill)",
-    qty: 45,
-    keterangan: "Kemasan bocor membasahi barang lain di sekitarnya karena tertindih berat pallet yang berlebihan.",
-    folderLink: "https://drive.google.com",
-    pdfLink: "https://drive.google.com",
-    photos: ["https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80"]
   }
 ];
 
 let allReports = [];
 
-// Navigation Manager (Tab Switcher)
 function switchTab(tabName) {
   const dashboardView = document.getElementById('dashboardView');
   const formView = document.getElementById('formView');
@@ -63,24 +38,22 @@ function switchTab(tabName) {
   }
 }
 
-// Fetch Reports Data from Google Apps Script / Mock
+// Mengambil Data Laporan dari Google Sheets via Apps Script
 async function loadReports() {
   const loading = document.getElementById('loadingCards');
-  const cardGrid = document.getElementById('cardGrid');
 
-  if (SCRIPT_URL === "PASTE_WEB_APP_URL_DI_SINI") {
-    // Mode Simulasi / Mock Data
-    setTimeout(() => {
-      allReports = MOCK_DATA;
-      loading.classList.add('hidden');
-      renderCards(allReports);
-      showToast("Mode Demo: Menggunakan Data Simulasi Local");
-    }, 600);
+  // Jika URL belum diisi, gunakan Mock Data
+  if (!SCRIPT_URL || SCRIPT_URL.includes("PASTE_WEB_APP_URL_DI_SINI")) {
+    allReports = MOCK_DATA;
+    loading.classList.add('hidden');
+    renderCards(allReports);
+    showToast("Demo Mode: Silakan isi SCRIPT_URL dengan URL Apps Script Anda.");
     return;
   }
 
   try {
-    const response = await fetch(SCRIPT_URL);
+    // Tambahkan redirect: 'follow' untuk menangani URL redirect dari Apps Script
+    const response = await fetch(SCRIPT_URL, { redirect: 'follow' });
     const json = await response.json();
 
     if (json.result === 'success') {
@@ -88,23 +61,29 @@ async function loadReports() {
       loading.classList.add('hidden');
       renderCards(allReports);
     } else {
-      loading.innerHTML = `<p style="color: #dc2626;">Gagal memuat data: ${json.error}</p>`;
+      loading.innerHTML = `<p style="color: #dc2626;">Error Google Apps Script: ${json.error}</p>`;
     }
   } catch (err) {
-    console.error(err);
-    loading.innerHTML = `<p style="color: #dc2626;">Terjadi kesalahan saat terhubung ke Google Apps Script.</p>`;
+    console.error("Fetch Error:", err);
+    loading.innerHTML = `
+      <div style="color: #dc2626; text-align: center; padding: 20px;">
+        <p><strong>Terjadi kesalahan saat terhubung ke Google Apps Script.</strong></p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">
+          Pastikan Deployment Apps Script diatur ke <b>Who has access: Anyone</b> dan ganti kodenya ke versi terbaru.
+        </p>
+      </div>
+    `;
   }
 }
 
-// Render Card Grid HTML
 function renderCards(reports) {
   const grid = document.getElementById('cardGrid');
   grid.innerHTML = '';
 
-  if (reports.length === 0) {
+  if (!reports || reports.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1/-1; text-align: center; padding: 48px; color: var(--text-muted);">
-        <p>Tidak ada data laporan barang damage ditemukan.</p>
+      <div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #64748b;">
+        <p>Belum ada data laporan barang damage.</p>
       </div>
     `;
     return;
@@ -145,17 +124,16 @@ function renderCards(reports) {
   });
 }
 
-// Filter Search & Category
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
   const selectedType = document.getElementById('typeFilter').value;
 
   const filtered = allReports.filter(item => {
     const matchesSearch = 
-      item.project.toLowerCase().includes(searchTerm) ||
-      item.sku.toLowerCase().includes(searchTerm) ||
-      item.noBa.toLowerCase().includes(searchTerm) ||
-      item.keterangan.toLowerCase().includes(searchTerm);
+      (item.project && item.project.toLowerCase().includes(searchTerm)) ||
+      (item.sku && item.sku.toLowerCase().includes(searchTerm)) ||
+      (item.noBa && item.noBa.toLowerCase().includes(searchTerm)) ||
+      (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm));
 
     const matchesType = (selectedType === 'ALL') || (item.tipeDamage === selectedType);
 
@@ -165,7 +143,6 @@ function applyFilters() {
   renderCards(filtered);
 }
 
-// File to Base64 Conversion Helper
 const fileToBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -177,7 +154,6 @@ const fileToBase64 = file => new Promise((resolve, reject) => {
   reader.onerror = error => reject(error);
 });
 
-// Handle Form Submission
 async function handleFormSubmit(event) {
   event.preventDefault();
 
@@ -186,11 +162,9 @@ async function handleFormSubmit(event) {
   btnSubmit.textContent = '⏳ Mengunggah ke Drive...';
 
   try {
-    // Process PDF File
     const pdfInput = document.getElementById('pdfFileInput').files[0];
     const pdfData = pdfInput ? await fileToBase64(pdfInput) : null;
 
-    // Process Photo Files
     const photoInputs = document.getElementById('photosInput').files;
     const photoPromises = Array.from(photoInputs).map(file => fileToBase64(file));
     const photosData = await Promise.all(photoPromises);
@@ -206,28 +180,6 @@ async function handleFormSubmit(event) {
       photos: photosData
     };
 
-    if (SCRIPT_URL === "PASTE_WEB_APP_URL_DI_SINI") {
-      // Demo mode fallback
-      setTimeout(() => {
-        allReports.unshift({
-          ...payload,
-          timestamp: new Date().toISOString().slice(0, 10),
-          folderLink: "https://drive.google.com",
-          pdfLink: "https://drive.google.com",
-          photos: photosData.map(p => p.data)
-        });
-
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Kirim & Buat Folder Drive';
-        document.getElementById('damageForm').reset();
-        switchTab('dashboard');
-        renderCards(allReports);
-        showToast("Laporan Berhasil Disimpan! (Mode Demo Local)");
-      }, 1000);
-      return;
-    }
-
-    // Real API Call to Google Apps Script
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -253,7 +205,6 @@ async function handleFormSubmit(event) {
   }
 }
 
-// Toast Helper
 function showToast(message) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
@@ -263,7 +214,6 @@ function showToast(message) {
   }, 3500);
 }
 
-// Initialize System on Load
 document.addEventListener('DOMContentLoaded', () => {
   loadReports();
 });
