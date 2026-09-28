@@ -5,7 +5,6 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZeZ9y2G8_Lvnv160u_
 let allReports = [];
 let isAdminLoggedIn = false;
 
-// Tab Switcher
 function switchTab(tabName) {
   const dashboardView = document.getElementById('dashboardView');
   const formView = document.getElementById('formView');
@@ -25,7 +24,16 @@ function switchTab(tabName) {
   }
 }
 
-// Toggle Login Admin
+function togglePenyelesaian(selectId, groupContainerId) {
+  const statusVal = document.getElementById(selectId).value;
+  const group = document.getElementById(groupContainerId);
+  if (statusVal === 'Close') {
+    group.classList.remove('hidden');
+  } else {
+    group.classList.add('hidden');
+  }
+}
+
 function toggleAdminLogin() {
   if (isAdminLoggedIn) {
     isAdminLoggedIn = false;
@@ -47,7 +55,6 @@ function toggleAdminLogin() {
   }
 }
 
-// Load Data Instan via Google Visual API (~0.3 Detik)
 async function loadReports() {
   const loading = document.getElementById('loadingCards');
 
@@ -77,7 +84,7 @@ async function loadReports() {
       }
 
       allReports.push({
-        rowIndex: idx + 2, // Index baris untuk Google Sheets (Header = 1)
+        rowIndex: idx + 2,
         timestamp: c[0] ? c[0].v : "",
         project: c[1] ? c[1].v : "",
         noBa: c[2] ? c[2].v : "",
@@ -87,7 +94,9 @@ async function loadReports() {
         keterangan: c[6] ? c[6].v : "",
         folderLink: c[7] ? c[7].v : "#",
         pdfLink: c[8] ? c[8].v : "#",
-        photos: photoUrls
+        photos: photoUrls,
+        statusBap: (c[10] && c[10].v) ? c[10].v : "Open",
+        penyelesaian: (c[11] && c[11].v) ? c[11].v : "-"
       });
     });
 
@@ -96,11 +105,10 @@ async function loadReports() {
 
   } catch (err) {
     console.error("Error reading sheets:", err);
-    loading.innerHTML = `<p style="color:#dc2626;">Gagal memuat data Google Sheets. Pastikan sudah di-Publish to Web.</p>`;
+    loading.innerHTML = `<p style="color:#dc2626;">Gagal memuat data Google Sheets.</p>`;
   }
 }
 
-// Render Card Grid
 function renderCards(reports) {
   const grid = document.getElementById('cardGrid');
   grid.innerHTML = '';
@@ -116,6 +124,7 @@ function renderCards(reports) {
       : 'https://via.placeholder.com/400x200?text=Foto+Kerusakan';
 
     const typeClass = item.tipeDamage ? item.tipeDamage.toLowerCase() : 'inbound';
+    const statusClass = item.statusBap ? item.statusBap.toLowerCase() : 'open';
 
     let actionButtons = '';
     if (isAdminLoggedIn) {
@@ -135,6 +144,7 @@ function renderCards(reports) {
     card.innerHTML = `
       <div class="card-media">
         <img src="${photoSrc}" alt="${item.sku}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x200?text=Foto+Gagal+Dimuat'">
+        <span class="badge-status ${statusClass}">BAP: ${item.statusBap}</span>
         <span class="badge-type ${typeClass}">${item.tipeDamage}</span>
       </div>
       <div class="card-body">
@@ -144,6 +154,9 @@ function renderCards(reports) {
           <span><strong>Qty:</strong> ${item.qty} Pcs</span>
           <span><strong>BA:</strong> ${item.noBa}</span>
         </div>
+        
+        ${item.statusBap === 'Close' ? `<div class="card-resolution">🤝 Penyelesaian: <u>${item.penyelesaian}</u></div>` : ''}
+
         <div class="card-keterangan">
           <strong>Kronologi / Keterangan:</strong><br>
           ${item.keterangan}
@@ -157,7 +170,6 @@ function renderCards(reports) {
   });
 }
 
-// Buka Modal Edit
 function openEditModal(rowIndex) {
   const item = allReports.find(r => r.rowIndex === rowIndex);
   if (!item) return;
@@ -168,6 +180,10 @@ function openEditModal(rowIndex) {
   document.getElementById('editSku').value = item.sku;
   document.getElementById('editQty').value = item.qty;
   document.getElementById('editKeterangan').value = item.keterangan;
+  document.getElementById('editStatusBap').value = item.statusBap || "Open";
+  document.getElementById('editPenyelesaian').value = (item.penyelesaian && item.penyelesaian !== "-") ? item.penyelesaian : "Tarik Pabrik";
+
+  togglePenyelesaian('editStatusBap', 'editPenyelesaianGroup');
 
   document.getElementById('editModal').classList.remove('hidden');
 }
@@ -176,7 +192,6 @@ function closeEditModal() {
   document.getElementById('editModal').classList.add('hidden');
 }
 
-// Submit Edit Data via JSONP
 function handleEditSubmit(event) {
   event.preventDefault();
   const btnSave = document.getElementById('btnSaveEdit');
@@ -189,8 +204,10 @@ function handleEditSubmit(event) {
   const sku = encodeURIComponent(document.getElementById('editSku').value);
   const qty = encodeURIComponent(document.getElementById('editQty').value);
   const keterangan = encodeURIComponent(document.getElementById('editKeterangan').value);
+  const statusBap = encodeURIComponent(document.getElementById('editStatusBap').value);
+  const penyelesaian = encodeURIComponent(document.getElementById('editPenyelesaian').value);
 
-  const editUrl = `${SCRIPT_URL}?action=UPDATE&rowIndex=${rowIndex}&project=${project}&tipeDamage=${tipeDamage}&sku=${sku}&qty=${qty}&keterangan=${keterangan}&callback=onEditComplete`;
+  const editUrl = `${SCRIPT_URL}?action=UPDATE&rowIndex=${rowIndex}&project=${project}&tipeDamage=${tipeDamage}&sku=${sku}&qty=${qty}&keterangan=${keterangan}&statusBap=${statusBap}&penyelesaian=${penyelesaian}&callback=onEditComplete`;
 
   window.onEditComplete = function(response) {
     btnSave.disabled = false;
@@ -199,9 +216,9 @@ function handleEditSubmit(event) {
 
     if (response && response.result === 'success') {
       showToast("Data laporan berhasil diperbarui!");
-      setTimeout(loadReports, 1000);
+      setTimeout(loadReports, 1200);
     } else {
-      alert("Gagal memperbarui data: " + (response ? response.error : "Unknown error"));
+      alert("Gagal memperbarui data.");
     }
   };
 
@@ -210,7 +227,6 @@ function handleEditSubmit(event) {
   document.body.appendChild(script);
 }
 
-// Hapus Data via JSONP
 function deleteReport(rowIndex) {
   if (!confirm("Apakah Anda yakin ingin menghapus laporan barang damage ini?")) return;
 
@@ -221,9 +237,9 @@ function deleteReport(rowIndex) {
   window.onDeleteComplete = function(response) {
     if (response && response.result === 'success') {
       showToast("Data berhasil dihapus!");
-      setTimeout(loadReports, 1000);
+      setTimeout(loadReports, 1200);
     } else {
-      alert("Gagal menghapus data: " + (response ? response.error : "Unknown error"));
+      alert("Gagal menghapus data.");
     }
   };
 
@@ -232,10 +248,10 @@ function deleteReport(rowIndex) {
   document.body.appendChild(script);
 }
 
-// Filter Search & Category
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
   const selectedType = document.getElementById('typeFilter').value;
+  const selectedStatus = document.getElementById('statusFilter').value;
 
   const filtered = allReports.filter(item => {
     const matchesSearch = 
@@ -245,26 +261,21 @@ function applyFilters() {
       (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm));
 
     const matchesType = (selectedType === 'ALL') || (item.tipeDamage === selectedType);
+    const matchesStatus = (selectedStatus === 'ALL') || (item.statusBap === selectedStatus);
 
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   renderCards(filtered);
 }
 
-// Convert File to Base64
 const fileToBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
-  reader.onload = () => resolve({
-    name: file.name,
-    type: file.type,
-    data: reader.result
-  });
+  reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
   reader.onerror = error => reject(error);
 });
 
-// Submit Form Baru
 async function handleFormSubmit(event) {
   event.preventDefault();
 
@@ -288,6 +299,8 @@ async function handleFormSubmit(event) {
       qty: document.getElementById('qtyInput').value,
       sku: document.getElementById('skuInput').value,
       keterangan: document.getElementById('keteranganInput').value,
+      statusBap: document.getElementById('statusBapInput').value,
+      penyelesaian: document.getElementById('penyelesaianInput').value,
       pdfFile: pdfData,
       photos: photosData
     };
