@@ -1,5 +1,5 @@
 // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrRQ8SS_NW6TWOa4VOjWq-75hmPfdTW1JSvEfcSa9R4xdCsqimB1dzWS7uIsT6nn-y3Q/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLGmD-beTJkCJc5NfGHBODebnwJ_YZJEBS01spupR6BNLtIu3A5nY6yqhHeNEvAR-mdQ/exec";
 
 // Mock data fallback jika URL belum diisi
 const MOCK_DATA = [
