@@ -1,12 +1,11 @@
-// 1. SPREADSHEET ID ANDA (Lihat dari URL Google Sheet Anda: https://docs.google.com/spreadsheets/d/ ID_DI_SINI /edit)
+// GANTI DENGAN SPREADSHEET ID & WEB APP URL ANDA
 const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg";
-
-// 2. WEB APP URL GOOGLE APPS SCRIPT ANDA (Hanya dipakai untuk Mengirim/Upload Form Baru)
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLGmD-beTJkCJc5NfGHBODebnwJ_YZJEBS01spupR6BNLtIu3A5nY6yqhHeNEvAR-mdQ/exec";
 
 let allReports = [];
+let isAdminLoggedIn = false;
 
-// Tab Navigator (SPA)
+// Tab Switcher
 function switchTab(tabName) {
   const dashboardView = document.getElementById('dashboardView');
   const formView = document.getElementById('formView');
@@ -26,13 +25,34 @@ function switchTab(tabName) {
   }
 }
 
-// BACA DATA DENGAN CARA SUPER FAST (Google Visualization API ~ 0.3 Detik)
+// Toggle Login Admin
+function toggleAdminLogin() {
+  if (isAdminLoggedIn) {
+    isAdminLoggedIn = false;
+    document.getElementById('btnAdminToggle').classList.remove('active');
+    document.getElementById('btnAdminToggle').textContent = "🔑 Mode Admin";
+    showToast("Mode Admin Dinonaktifkan.");
+    renderCards(allReports);
+  } else {
+    const password = prompt("Masukkan Password Admin:");
+    if (password === "admin123" || password === "admin") {
+      isAdminLoggedIn = true;
+      document.getElementById('btnAdminToggle').classList.add('active');
+      document.getElementById('btnAdminToggle').textContent = "🔒 Admin (Aktif - Logout)";
+      showToast("Berhasil Login sebagai Admin!");
+      renderCards(allReports);
+    } else if (password !== null) {
+      alert("Password Admin Salah!");
+    }
+  }
+}
+
+// Load Data Instan via Google Visual API (~0.3 Detik)
 async function loadReports() {
   const loading = document.getElementById('loadingCards');
 
-  // Fallback jika ID belum diisi
-  if (!SPREADSHEET_ID || SPREADSHEET_ID.includes("PASTE_SPREADSHEET_ID")) {
-    loading.innerHTML = `<p style="color:#d97706;">Silakan isi <b>SPREADSHEET_ID</b> pada file script.js terlebih dahulu.</p>`;
+  if (!SPREADSHEET_ID || SPREADSHEET_ID.includes("PASTE_SPREADSHEET")) {
+    loading.innerHTML = `<p style="color:#d97706;">Silakan isi <b>SPREADSHEET_ID</b> pada file script.js.</p>`;
     return;
   }
 
@@ -41,25 +61,23 @@ async function loadReports() {
   try {
     const res = await fetch(gvisUrl);
     const text = await res.text();
-    
-    // Google gviz mengembalikan format jsonp string "//OK:{...}", kita potong teksnya
     const jsonString = text.substring(47, text.length - 2);
     const json = JSON.parse(jsonString);
 
     const rows = json.table.rows;
     allReports = [];
 
-    rows.forEach(r => {
+    rows.forEach((r, idx) => {
       const c = r.c;
-      if (!c || !c[1]) return; // Skip baris kosong
+      if (!c || !c[1]) return;
 
-      // Parsing foto dari Kolom J (Index 9)
       let photoUrls = [];
       if (c[9] && c[9].v) {
         photoUrls = c[9].v.toString().split(",");
       }
 
       allReports.push({
+        rowIndex: idx + 2, // Index baris untuk Google Sheets (Header = 1)
         timestamp: c[0] ? c[0].v : "",
         project: c[1] ? c[1].v : "",
         noBa: c[2] ? c[2].v : "",
@@ -78,28 +96,17 @@ async function loadReports() {
 
   } catch (err) {
     console.error("Error reading sheets:", err);
-    loading.innerHTML = `
-      <div style="color: #dc2626; text-align: center; padding: 20px;">
-        <p><strong>Gagal membaca Google Sheets.</strong></p>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 6px;">
-          Pastikan Anda sudah klik <b>File > Share > Publish to Web</b> pada Google Spreadsheet Anda.
-        </p>
-      </div>
-    `;
+    loading.innerHTML = `<p style="color:#dc2626;">Gagal memuat data Google Sheets. Pastikan sudah di-Publish to Web.</p>`;
   }
 }
 
-// Render Kartu ke Dashboard
+// Render Card Grid
 function renderCards(reports) {
   const grid = document.getElementById('cardGrid');
   grid.innerHTML = '';
 
   if (!reports || reports.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #64748b;">
-        <p>Belum ada data laporan barang damage.</p>
-      </div>
-    `;
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #64748b;"><p>Belum ada data laporan barang damage.</p></div>`;
     return;
   }
 
@@ -109,6 +116,19 @@ function renderCards(reports) {
       : 'https://via.placeholder.com/400x200?text=Foto+Kerusakan';
 
     const typeClass = item.tipeDamage ? item.tipeDamage.toLowerCase() : 'inbound';
+
+    let actionButtons = '';
+    if (isAdminLoggedIn) {
+      actionButtons = `
+        <button onclick="openEditModal(${item.rowIndex})" class="card-btn edit">✏️ Edit</button>
+        <button onclick="deleteReport(${item.rowIndex})" class="card-btn delete">🗑️ Hapus</button>
+      `;
+    } else {
+      actionButtons = `
+        ${(item.pdfLink && item.pdfLink !== "#") ? `<a href="${item.pdfLink}" target="_blank" class="card-btn pdf">📄 PDF BA</a>` : ''}
+        ${(item.folderLink && item.folderLink !== "#") ? `<a href="${item.folderLink}" target="_blank" class="card-btn drive">📁 Google Drive</a>` : ''}
+      `;
+    }
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -129,8 +149,7 @@ function renderCards(reports) {
           ${item.keterangan}
         </div>
         <div class="card-footer">
-          ${(item.pdfLink && item.pdfLink !== "#") ? `<a href="${item.pdfLink}" target="_blank" class="card-btn pdf">📄 PDF BA</a>` : ''}
-          ${(item.folderLink && item.folderLink !== "#") ? `<a href="${item.folderLink}" target="_blank" class="card-btn drive">📁 Google Drive</a>` : ''}
+          ${actionButtons}
         </div>
       </div>
     `;
@@ -138,7 +157,88 @@ function renderCards(reports) {
   });
 }
 
-// Filter Laporan
+// Buka Modal Edit
+function openEditModal(rowIndex) {
+  const item = allReports.find(r => r.rowIndex === rowIndex);
+  if (!item) return;
+
+  document.getElementById('editRowIndex').value = item.rowIndex;
+  document.getElementById('editProject').value = item.project;
+  document.getElementById('editTipe').value = item.tipeDamage;
+  document.getElementById('editSku').value = item.sku;
+  document.getElementById('editQty').value = item.qty;
+  document.getElementById('editKeterangan').value = item.keterangan;
+
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.add('hidden');
+}
+
+// Submit Update (Edit)
+async function handleEditSubmit(event) {
+  event.preventDefault();
+  const btnSave = document.getElementById('btnSaveEdit');
+  btnSave.disabled = true;
+  btnSave.textContent = '⏳ Menyimpan...';
+
+  const payload = {
+    action: "UPDATE",
+    rowIndex: document.getElementById('editRowIndex').value,
+    project: document.getElementById('editProject').value,
+    tipeDamage: document.getElementById('editTipe').value,
+    sku: document.getElementById('editSku').value,
+    qty: document.getElementById('editQty').value,
+    keterangan: document.getElementById('editKeterangan').value
+  };
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    showToast("Data laporan berhasil diperbarui!");
+    closeEditModal();
+    setTimeout(loadReports, 2500);
+  } catch (err) {
+    alert("Gagal memperbarui data.");
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = 'Simpan Perubahan';
+  }
+}
+
+// Hapus Report Data
+async function deleteReport(rowIndex) {
+  if (!confirm("Apakah Anda yakin ingin menghapus laporan barang damage ini?")) return;
+
+  showToast("⏳ Menghapus data laporan...");
+
+  const payload = {
+    action: "DELETE",
+    rowIndex: rowIndex
+  };
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    showToast("Data berhasil dihapus!");
+    setTimeout(loadReports, 2500);
+  } catch (err) {
+    alert("Gagal menghapus data.");
+  }
+}
+
+// Filter Search & Category
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
   const selectedType = document.getElementById('typeFilter').value;
@@ -158,7 +258,7 @@ function applyFilters() {
   renderCards(filtered);
 }
 
-// File Helper
+// Convert File to Base64
 const fileToBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -170,13 +270,13 @@ const fileToBase64 = file => new Promise((resolve, reject) => {
   reader.onerror = error => reject(error);
 });
 
-// Submit Form Laporan Baru
+// Submit Form Baru
 async function handleFormSubmit(event) {
   event.preventDefault();
 
   const btnSubmit = document.getElementById('btnSubmit');
   btnSubmit.disabled = true;
-  btnSubmit.textContent = '⏳ Mengunggah ke Drive & Sheets...';
+  btnSubmit.textContent = '⏳ Mengunggah ke Drive...';
 
   try {
     const pdfInput = document.getElementById('pdfFileInput').files[0];
@@ -187,6 +287,7 @@ async function handleFormSubmit(event) {
     const photosData = await Promise.all(photoPromises);
 
     const payload = {
+      action: "CREATE",
       project: document.getElementById('projectInput').value,
       noBa: document.getElementById('noBaInput').value,
       tipeDamage: document.getElementById('typeInput').value,
@@ -222,9 +323,7 @@ function showToast(message) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.classList.remove('hidden');
-  setTimeout(() => {
-    toast.classList.add('hidden');
-  }, 3500);
+  setTimeout(() => { toast.classList.add('hidden'); }, 3500);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
