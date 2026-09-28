@@ -1,7 +1,7 @@
-// Paste URL Web App /exec Anda dari Langkah 2 di sini
+// GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUaUcHmPU-W0s3ozCl9mnhNjR9UlUZtnQN-cEI4bsHRLPNsc88OhiZsoOxWs0BfexO3Q/exec";
 
-// Sample / Mock Data jika URL belum diisi
+// Mock data fallback jika URL belum diisi
 const MOCK_DATA = [
   {
     timestamp: "2026-09-28",
@@ -38,42 +38,49 @@ function switchTab(tabName) {
   }
 }
 
-// Mengambil Data Laporan dari Google Sheets via Apps Script
-async function loadReports() {
+// Load Data menggunakan JSONP untuk Menghindari CORS Block
+function loadReports() {
   const loading = document.getElementById('loadingCards');
 
-  // Jika URL belum diisi, gunakan Mock Data
   if (!SCRIPT_URL || SCRIPT_URL.includes("PASTE_WEB_APP_URL_DI_SINI")) {
     allReports = MOCK_DATA;
     loading.classList.add('hidden');
     renderCards(allReports);
-    showToast("Demo Mode: Silakan isi SCRIPT_URL dengan URL Apps Script Anda.");
+    showToast("Mode Demo: Menggunakan data simulasi lokal.");
     return;
   }
 
-  try {
-    // Tambahkan redirect: 'follow' untuk menangani URL redirect dari Apps Script
-    const response = await fetch(SCRIPT_URL, { redirect: 'follow' });
-    const json = await response.json();
-
-    if (json.result === 'success') {
+  // Buat fungsi callback global
+  window.handleGasResponse = function(json) {
+    if (json && json.result === 'success') {
       allReports = json.data;
       loading.classList.add('hidden');
       renderCards(allReports);
     } else {
-      loading.innerHTML = `<p style="color: #dc2626;">Error Google Apps Script: ${json.error}</p>`;
+      loading.innerHTML = `<p style="color: #dc2626;">Error Data: ${json ? json.error : 'Format data salah'}</p>`;
     }
-  } catch (err) {
-    console.error("Fetch Error:", err);
+    // Hapus script tag setelah selesai
+    const oldScript = document.getElementById('jsonpScript');
+    if (oldScript) oldScript.remove();
+  };
+
+  // Inject Script Tag untuk Bypassing CORS
+  const script = document.createElement('script');
+  script.id = 'jsonpScript';
+  script.src = `${SCRIPT_URL}?callback=handleGasResponse&t=${new Date().getTime()}`;
+  
+  script.onerror = function() {
     loading.innerHTML = `
       <div style="color: #dc2626; text-align: center; padding: 20px;">
-        <p><strong>Terjadi kesalahan saat terhubung ke Google Apps Script.</strong></p>
+        <p><strong>Gagal terhubung ke Google Apps Script.</strong></p>
         <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">
-          Pastikan Deployment Apps Script diatur ke <b>Who has access: Anyone</b> dan ganti kodenya ke versi terbaru.
+          Pastikan Anda sudah memilih <b>Who has access: Anyone</b> saat melakukan New Deployment di Apps Script.
         </p>
       </div>
     `;
-  }
+  };
+
+  document.body.appendChild(script);
 }
 
 function renderCards(reports) {
@@ -180,25 +187,22 @@ async function handleFormSubmit(event) {
       photos: photosData
     };
 
-    const response = await fetch(SCRIPT_URL, {
+    // Menggunakan no-cors untuk POST upload file
+    await fetch(SCRIPT_URL, {
       method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
-
-    if (result.result === 'success') {
-      showToast("Laporan tersimpan & folder Google Drive berhasil dibuat!");
-      document.getElementById('damageForm').reset();
-      switchTab('dashboard');
-      loadReports();
-    } else {
-      alert('Gagal menyimpan: ' + result.error);
-    }
+    showToast("Laporan terkirim! Memperbarui data...");
+    document.getElementById('damageForm').reset();
+    switchTab('dashboard');
+    setTimeout(loadReports, 3000); // Beri jeda 3 detik agar Drive & Sheet selesai memproses
 
   } catch (err) {
     console.error(err);
-    alert('Terjadi kesalahan koneksi saat mengirim data.');
+    alert('Terjadi kesalahan saat mengirim data.');
   } finally {
     btnSubmit.disabled = false;
     btnSubmit.textContent = 'Kirim & Buat Folder Drive';
