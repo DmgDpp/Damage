@@ -18,15 +18,9 @@
       </div>
     </div>
     <div class="nav-actions">
-      <button class="nav-tab active" id="btnTabDashboard" onclick="switchTab('dashboard')">
-        📊 Dashboard Card
-      </button>
-      <button class="nav-tab" id="btnTabForm" onclick="switchTab('form')">
-        📝 Input BA Baru
-      </button>
-      <button class="btn-admin" id="btnAdminToggle" onclick="toggleAdminLogin()">
-        🔑 Mode Admin
-      </button>
+      <button class="nav-tab active" id="btnTabDashboard" onclick="switchTab('dashboard')">📊 Dashboard Card</button>
+      <button class="nav-tab" id="btnTabForm" onclick="switchTab('form')">📝 Input BA Baru</button>
+      <button class="btn-admin" id="btnAdminToggle" onclick="toggleAdminLogin()">🔑 Mode Admin</button>
     </div>
   </header>
 
@@ -48,6 +42,13 @@
             <option value="ALL">Semua Tipe Damage</option>
             <option value="Inbound">Inbound</option>
             <option value="Handling">Handling</option>
+          </select>
+        </div>
+        <div class="filter-box">
+          <select id="statusFilter" onchange="applyFilters()">
+            <option value="ALL">Semua Status BAP</option>
+            <option value="Open">Status: Open</option>
+            <option value="Close">Status: Close</option>
           </select>
         </div>
         <button class="btn-primary" onclick="switchTab('form')">+ Laporan BA Baru</button>
@@ -93,6 +94,22 @@
             <div class="form-group">
               <label for="qtyInput">Jumlah (Qty) <span class="required">*</span></label>
               <input type="number" id="qtyInput" min="1" placeholder="1" required>
+            </div>
+
+            <div class="form-group">
+              <label for="statusBapInput">Status BAP <span class="required">*</span></label>
+              <select id="statusBapInput" onchange="togglePenyelesaian('statusBapInput', 'penyelesaianGroup')" required>
+                <option value="Open">Open</option>
+                <option value="Close">Close</option>
+              </select>
+            </div>
+
+            <div class="form-group hidden" id="penyelesaianGroup">
+              <label for="penyelesaianInput">Penyelesaian Kerusakan <span class="required">*</span></label>
+              <select id="penyelesaianInput">
+                <option value="Tarik Pabrik">Tarik Pabrik</option>
+                <option value="Klaim">Klaim</option>
+              </select>
             </div>
 
             <div class="form-group full-width">
@@ -146,6 +163,22 @@
           <select id="editTipe" required>
             <option value="Inbound">Inbound</option>
             <option value="Handling">Handling</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-12">
+          <label>Status BAP</label>
+          <select id="editStatusBap" onchange="togglePenyelesaian('editStatusBap', 'editPenyelesaianGroup')" required>
+            <option value="Open">Open</option>
+            <option value="Close">Close</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-12 hidden" id="editPenyelesaianGroup">
+          <label>Penyelesaian Kerusakan</label>
+          <select id="editPenyelesaian">
+            <option value="Tarik Pabrik">Tarik Pabrik</option>
+            <option value="Klaim">Klaim</option>
           </select>
         </div>
 
