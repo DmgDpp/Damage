@@ -72,14 +72,43 @@ body { background-color: var(--bg-main); color: var(--text-main); line-height: 1
 .card-media img { width: 100%; height: 100%; object-fit: cover; }
 
 /* Badges */
+/* Posisi Badge Status (Kiri Atas) */
 .badge-status {
-  position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 20px;
-  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
-.badge-status.open { background-color: #dbeafe; color: #1d4ed8; }
-.badge-status.close { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
-.badge-type { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.badge-status.open {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.badge-status.close {
+  background-color: #475569;
+  color: #ffffff;
+}
+
+/* Posisi Badge Tipe (Kanan Atas) */
+.badge-type {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
 .badge-type.inbound { background-color: var(--inbound-bg); color: var(--inbound-text); }
 .badge-type.handling { background-color: var(--handling-bg); color: var(--handling-text); }
 
@@ -88,9 +117,16 @@ body { background-color: var(--bg-main); color: var(--text-main); line-height: 1
 .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
 .card-meta { display: flex; gap: 16px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
 
+/* Kotak Penyelesaian Kerusakan */
 .card-resolution {
-  font-size: 0.82rem; color: #0f172a; background: #f1f5f9; padding: 6px 10px;
-  border-radius: 6px; margin-bottom: 12px; font-weight: 600;
+  font-size: 0.82rem;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  border-left: 3px solid #10b981;
 }
 
 .card-keterangan { font-size: 0.88rem; color: #334155; background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary); margin-bottom: 20px; flex: 1; }
