@@ -6,8 +6,6 @@
   --text-main: #0f172a;
   --text-muted: #64748b;
   --border: #e2e8f0;
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
   
   --inbound-bg: #dcfce7;
   --inbound-text: #15803d;
@@ -72,6 +70,15 @@ body { background-color: var(--bg-main); color: var(--text-main); line-height: 1
 .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
 .card-media { position: relative; height: 200px; background: #f1f5f9; }
 .card-media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Badges */
+.badge-status {
+  position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+}
+.badge-status.open { background-color: #dbeafe; color: #1d4ed8; }
+.badge-status.close { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
 .badge-type { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
 .badge-type.inbound { background-color: var(--inbound-bg); color: var(--inbound-text); }
 .badge-type.handling { background-color: var(--handling-bg); color: var(--handling-text); }
@@ -79,7 +86,13 @@ body { background-color: var(--bg-main); color: var(--text-main); line-height: 1
 .card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
 .card-project { font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; }
 .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
-.card-meta { display: flex; gap: 16px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
+.card-meta { display: flex; gap: 16px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+
+.card-resolution {
+  font-size: 0.82rem; color: #0f172a; background: #f1f5f9; padding: 6px 10px;
+  border-radius: 6px; margin-bottom: 12px; font-weight: 600;
+}
+
 .card-keterangan { font-size: 0.88rem; color: #334155; background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary); margin-bottom: 20px; flex: 1; }
 
 .card-footer { display: flex; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px; }
