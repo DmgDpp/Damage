@@ -1,24 +1,12 @@
-// GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLGmD-beTJkCJc5NfGHBODebnwJ_YZJEBS01spupR6BNLtIu3A5nY6yqhHeNEvAR-mdQ/exec";
+// 1. SPREADSHEET ID ANDA (Lihat dari URL Google Sheet Anda: https://docs.google.com/spreadsheets/d/ ID_DI_SINI /edit)
+const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg";
 
-// Mock data fallback jika URL belum diisi
-const MOCK_DATA = [
-  {
-    timestamp: "2026-09-28",
-    project: "Project Nike Expansion",
-    noBa: "BA-2026-089",
-    tipeDamage: "Inbound",
-    sku: "NK-AIR-MAX-90 (Sepatu Running Air Max)",
-    qty: 12,
-    keterangan: "Dus luar hancur basah terendam air hujan saat pembongkaran dari kontainer.",
-    folderLink: "#",
-    pdfLink: "#",
-    photos: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80"]
-  }
-];
+// 2. WEB APP URL GOOGLE APPS SCRIPT ANDA (Hanya dipakai untuk Mengirim/Upload Form Baru)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLGmD-beTJkCJc5NfGHBODebnwJ_YZJEBS01spupR6BNLtIu3A5nY6yqhHeNEvAR-mdQ/exec";
 
 let allReports = [];
 
+// Tab Navigator (SPA)
 function switchTab(tabName) {
   const dashboardView = document.getElementById('dashboardView');
   const formView = document.getElementById('formView');
@@ -38,51 +26,70 @@ function switchTab(tabName) {
   }
 }
 
-// Load Data menggunakan JSONP untuk Menghindari CORS Block
-function loadReports() {
+// BACA DATA DENGAN CARA SUPER FAST (Google Visualization API ~ 0.3 Detik)
+async function loadReports() {
   const loading = document.getElementById('loadingCards');
 
-  if (!SCRIPT_URL || SCRIPT_URL.includes("PASTE_WEB_APP_URL_DI_SINI")) {
-    allReports = MOCK_DATA;
-    loading.classList.add('hidden');
-    renderCards(allReports);
-    showToast("Mode Demo: Menggunakan data simulasi lokal.");
+  // Fallback jika ID belum diisi
+  if (!SPREADSHEET_ID || SPREADSHEET_ID.includes("PASTE_SPREADSHEET_ID")) {
+    loading.innerHTML = `<p style="color:#d97706;">Silakan isi <b>SPREADSHEET_ID</b> pada file script.js terlebih dahulu.</p>`;
     return;
   }
 
-  // Buat fungsi callback global
-  window.handleGasResponse = function(json) {
-    if (json && json.result === 'success') {
-      allReports = json.data;
-      loading.classList.add('hidden');
-      renderCards(allReports);
-    } else {
-      loading.innerHTML = `<p style="color: #dc2626;">Error Data: ${json ? json.error : 'Format data salah'}</p>`;
-    }
-    // Hapus script tag setelah selesai
-    const oldScript = document.getElementById('jsonpScript');
-    if (oldScript) oldScript.remove();
-  };
+  const gvisUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
 
-  // Inject Script Tag untuk Bypassing CORS
-  const script = document.createElement('script');
-  script.id = 'jsonpScript';
-  script.src = `${SCRIPT_URL}?callback=handleGasResponse&t=${new Date().getTime()}`;
-  
-  script.onerror = function() {
+  try {
+    const res = await fetch(gvisUrl);
+    const text = await res.text();
+    
+    // Google gviz mengembalikan format jsonp string "//OK:{...}", kita potong teksnya
+    const jsonString = text.substring(47, text.length - 2);
+    const json = JSON.parse(jsonString);
+
+    const rows = json.table.rows;
+    allReports = [];
+
+    rows.forEach(r => {
+      const c = r.c;
+      if (!c || !c[1]) return; // Skip baris kosong
+
+      // Parsing foto dari Kolom J (Index 9)
+      let photoUrls = [];
+      if (c[9] && c[9].v) {
+        photoUrls = c[9].v.toString().split(",");
+      }
+
+      allReports.push({
+        timestamp: c[0] ? c[0].v : "",
+        project: c[1] ? c[1].v : "",
+        noBa: c[2] ? c[2].v : "",
+        tipeDamage: c[3] ? c[3].v : "",
+        sku: c[4] ? c[4].v : "",
+        qty: c[5] ? c[5].v : "",
+        keterangan: c[6] ? c[6].v : "",
+        folderLink: c[7] ? c[7].v : "#",
+        pdfLink: c[8] ? c[8].v : "#",
+        photos: photoUrls
+      });
+    });
+
+    loading.classList.add('hidden');
+    renderCards(allReports);
+
+  } catch (err) {
+    console.error("Error reading sheets:", err);
     loading.innerHTML = `
       <div style="color: #dc2626; text-align: center; padding: 20px;">
-        <p><strong>Gagal terhubung ke Google Apps Script.</strong></p>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">
-          Pastikan Anda sudah memilih <b>Who has access: Anyone</b> saat melakukan New Deployment di Apps Script.
+        <p><strong>Gagal membaca Google Sheets.</strong></p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 6px;">
+          Pastikan Anda sudah klik <b>File > Share > Publish to Web</b> pada Google Spreadsheet Anda.
         </p>
       </div>
     `;
-  };
-
-  document.body.appendChild(script);
+  }
 }
 
+// Render Kartu ke Dashboard
 function renderCards(reports) {
   const grid = document.getElementById('cardGrid');
   grid.innerHTML = '';
@@ -97,9 +104,9 @@ function renderCards(reports) {
   }
 
   reports.forEach(item => {
-    const photoSrc = (item.photos && item.photos.length > 0) 
+    const photoSrc = (item.photos && item.photos.length > 0 && item.photos[0] !== "") 
       ? item.photos[0] 
-      : 'https://via.placeholder.com/400x200?text=Tidak+Ada+Foto';
+      : 'https://via.placeholder.com/400x200?text=Foto+Kerusakan';
 
     const typeClass = item.tipeDamage ? item.tipeDamage.toLowerCase() : 'inbound';
 
@@ -122,8 +129,8 @@ function renderCards(reports) {
           ${item.keterangan}
         </div>
         <div class="card-footer">
-          ${item.pdfLink ? `<a href="${item.pdfLink}" target="_blank" class="card-btn pdf">📄 PDF BA</a>` : ''}
-          ${item.folderLink ? `<a href="${item.folderLink}" target="_blank" class="card-btn drive">📁 Google Drive</a>` : ''}
+          ${(item.pdfLink && item.pdfLink !== "#") ? `<a href="${item.pdfLink}" target="_blank" class="card-btn pdf">📄 PDF BA</a>` : ''}
+          ${(item.folderLink && item.folderLink !== "#") ? `<a href="${item.folderLink}" target="_blank" class="card-btn drive">📁 Google Drive</a>` : ''}
         </div>
       </div>
     `;
@@ -131,6 +138,7 @@ function renderCards(reports) {
   });
 }
 
+// Filter Laporan
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
   const selectedType = document.getElementById('typeFilter').value;
@@ -150,6 +158,7 @@ function applyFilters() {
   renderCards(filtered);
 }
 
+// File Helper
 const fileToBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -161,12 +170,13 @@ const fileToBase64 = file => new Promise((resolve, reject) => {
   reader.onerror = error => reject(error);
 });
 
+// Submit Form Laporan Baru
 async function handleFormSubmit(event) {
   event.preventDefault();
 
   const btnSubmit = document.getElementById('btnSubmit');
   btnSubmit.disabled = true;
-  btnSubmit.textContent = '⏳ Mengunggah ke Drive...';
+  btnSubmit.textContent = '⏳ Mengunggah ke Drive & Sheets...';
 
   try {
     const pdfInput = document.getElementById('pdfFileInput').files[0];
@@ -187,7 +197,6 @@ async function handleFormSubmit(event) {
       photos: photosData
     };
 
-    // Menggunakan no-cors untuk POST upload file
     await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
@@ -198,11 +207,11 @@ async function handleFormSubmit(event) {
     showToast("Laporan terkirim! Memperbarui data...");
     document.getElementById('damageForm').reset();
     switchTab('dashboard');
-    setTimeout(loadReports, 3000); // Beri jeda 3 detik agar Drive & Sheet selesai memproses
+    setTimeout(loadReports, 3000);
 
   } catch (err) {
     console.error(err);
-    alert('Terjadi kesalahan saat mengirim data.');
+    alert('Terjadi kesalahan saat mengunggah data.');
   } finally {
     btnSubmit.disabled = false;
     btnSubmit.textContent = 'Kirim & Buat Folder Drive';
