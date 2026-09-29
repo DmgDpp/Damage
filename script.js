@@ -1,38 +1,25 @@
-// ==========================================================================
-// KONFIGURASI UTAMA KONEKSI SPREADSHEET & APPS SCRIPT
-// ==========================================================================
-const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg"; // ID Spreadsheet Anda
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZeZ9y2G8_Lvnv160u_T9pjyz7pwMNSx6lgHO6tNjWAU683wphToNTm2BO8QBTOemeIg/exec";   // URL Web App Apps Script Anda
+// GANTI DENGAN SPREADSHEET ID & WEB APP URL ANDA
+const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZeZ9y2G8_Lvnv160u_T9pjyz7pwMNSx6lgHO6tNjWAU683wphToNTm2BO8QBTOemeIg/exec";
 
 let allReports = [];
 let isAdminLoggedIn = false;
-let trendChartInstance = null;
-let ratioChartInstance = null;
 
 function switchTab(tabName) {
   const dashboardView = document.getElementById('dashboardView');
-  const analyticsView = document.getElementById('analyticsView');
   const formView = document.getElementById('formView');
   const btnDashboard = document.getElementById('btnTabDashboard');
-  const btnAnalytics = document.getElementById('btnTabAnalytics');
   const btnForm = document.getElementById('btnTabForm');
-
-  dashboardView.classList.add('hidden');
-  analyticsView.classList.add('hidden');
-  formView.classList.add('hidden');
-  btnDashboard.classList.remove('active');
-  btnAnalytics.classList.remove('active');
-  btnForm.classList.remove('active');
 
   if (tabName === 'dashboard') {
     dashboardView.classList.remove('hidden');
+    formView.classList.add('hidden');
     btnDashboard.classList.add('active');
-  } else if (tabName === 'analytics') {
-    analyticsView.classList.remove('hidden');
-    btnAnalytics.classList.add('active');
-    renderAnalytics();
+    btnForm.classList.remove('active');
   } else {
+    dashboardView.classList.add('hidden');
     formView.classList.remove('hidden');
+    btnDashboard.classList.remove('active');
     btnForm.classList.add('active');
   }
 }
@@ -68,73 +55,7 @@ function toggleAdminLogin() {
   }
 }
 
-// HELPER PARSER TANGGAL UNIVERSAL (ANTI "LAINNYA")
-function parseCustomDate(rawDate) {
-  const indoMonths = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-  ];
-
-  // Jika data tanggal kosong/null, gunakan bulan & tahun saat ini sebagai default
-  if (!rawDate || rawDate.toString().trim() === "" || rawDate === null) {
-    const now = new Date();
-    return `${indoMonths[now.getMonth()]} ${now.getFullYear()}`;
-  }
-
-  const strDate = rawDate.toString().trim();
-
-  // 1. Cek format khas gviz "Date(2026,8,21)" atau "Date(2026,8,21,14,30,0)"
-  const gvizMatch = strDate.match(/Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})/i);
-  if (gvizMatch) {
-    const year = parseInt(gvizMatch[1], 10);
-    const monthIndex = parseInt(gvizMatch[2], 10);
-    if (monthIndex >= 0 && monthIndex < 12) {
-      return `${indoMonths[monthIndex]} ${year}`;
-    }
-  }
-
-  // 2. Ekstraksi Angka Bulan & Tahun dari String (misal "21/09/2026 10:00" atau "21-09-2026")
-  // Mencari pola DD/MM/YYYY atau YYYY-MM-DD
-  const dmyMatch = strDate.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-  if (dmyMatch) {
-    let day = parseInt(dmyMatch[1], 10);
-    let month = parseInt(dmyMatch[2], 10);
-    let year = parseInt(dmyMatch[3], 10);
-
-    // Jika format YYYY-MM-DD
-    if (day > 1000) {
-      const tempYear = day;
-      day = year;
-      year = tempYear;
-    }
-
-    if (month >= 1 && month <= 12) {
-      return `${indoMonths[month - 1]} ${year}`;
-    }
-  }
-
-  // 3. Cek Teks Bulan Indonesia dalam String (misal "21 September 2026")
-  const lowerStr = strDate.toLowerCase();
-  for (let i = 0; i < indoMonths.length; i++) {
-    if (lowerStr.includes(indoMonths[i].toLowerCase())) {
-      const yearMatch = strDate.match(/\b(20\d{2})\b/);
-      const yearStr = yearMatch ? yearMatch[1] : new Date().getFullYear();
-      return `${indoMonths[i]} ${yearStr}`;
-    }
-  }
-
-  // 4. Fallback Standar JS Date
-  const stdDate = new Date(strDate);
-  if (!isNaN(stdDate.getTime())) {
-    return `${indoMonths[stdDate.getMonth()]} ${stdDate.getFullYear()}`;
-  }
-
-  // 5. Fallback Akhir: Mengambil bulan & tahun dari sistem jika format tanggal unik
-  const currentNow = new Date();
-  return `${indoMonths[currentNow.getMonth()]} ${currentNow.getFullYear()}`;
-}
-
-// FUNGSI LOAD DATA
+// BACA DATA DARI GOOGLE SHEETS
 async function loadReports() {
   const loading = document.getElementById('loadingCards');
 
@@ -156,26 +77,16 @@ async function loadReports() {
 
     rows.forEach((r, idx) => {
       const c = r.c;
-      if (!c || !c[1]) return; // Skip jika baris kosong
+      if (!c || !c[1]) return;
 
       let photoUrls = [];
       if (c[9] && c[9].v) {
         photoUrls = c[9].v.toString().split(",");
       }
 
-      // Ambil nilai tanggal dari Kolom A (Timestamp/Tanggal)
-      let rawDate = "";
-      if (c[0]) {
-        rawDate = c[0].f ? c[0].f : (c[0].v ? c[0].v : "");
-      }
-
-      // Parse nama bulan
-      let monthKey = parseCustomDate(rawDate);
-
       allReports.push({
         rowIndex: idx + 2,
-        timestamp: rawDate,
-        monthKey: monthKey, // Terisi nama bulan Bahasa Indonesia
+        timestamp: c[0] ? c[0].v : "",
         project: c[1] ? c[1].v : "",
         noBa: c[2] ? c[2].v : "",
         tipeDamage: c[3] ? c[3].v : "",
@@ -190,36 +101,16 @@ async function loadReports() {
       });
     });
 
-    populateMonthFilter();
     loading.classList.add('hidden');
     
+    // RENDER KARTU DAN PERBARUI ANGKA SUMMARY
     renderCards(allReports);
-    updateSummary(allReports);
-
-    // Refresh grafik/tabel jika sedang di tab Analisis
-    const analyticsView = document.getElementById('analyticsView');
-    if (analyticsView && !analyticsView.classList.contains('hidden')) {
-      renderAnalytics();
-    }
+    updateSummary(allReports); 
 
   } catch (err) {
     console.error("Error reading sheets:", err);
     loading.innerHTML = `<p style="color:#dc2626;">Gagal memuat data Google Sheets.</p>`;
   }
-}
-
-
-
-function populateMonthFilter() {
-  const monthFilter = document.getElementById('monthFilter');
-  const months = [...new Set(allReports.map(item => item.monthKey))];
-  
-  monthFilter.innerHTML = `<option value="ALL">Semua Bulan</option>`;
-  months.forEach(m => {
-    if (m && m !== "Lainnya") {
-      monthFilter.innerHTML += `<option value="${m}">${m}</option>`;
-    }
-  });
 }
 
 function renderCards(reports) {
@@ -237,25 +128,10 @@ function renderCards(reports) {
       : 'https://via.placeholder.com/400x200?text=Foto+Kerusakan';
 
     const typeClass = item.tipeDamage ? item.tipeDamage.toLowerCase() : 'inbound';
+    
+    // Default jika data sheet lama belum ada isinya -> set 'Open'
     const currentStatus = item.statusBap && item.statusBap !== "" ? item.statusBap : "Open";
     const statusClass = currentStatus.toLowerCase();
-
-    // Quick Resolution Buttons
-    let quickActions = '';
-    if (currentStatus === 'Open') {
-      quickActions = `
-        <div class="card-actions-quick">
-          <button onclick="quickSetResolution(${item.rowIndex}, 'Close', 'Tarik Pabrik')" class="btn-quick tarik">🏭 Tarik Pabrik</button>
-          <button onclick="quickSetResolution(${item.rowIndex}, 'Close', 'Klaim')" class="btn-quick klaim">📝 Klaim</button>
-        </div>
-      `;
-    } else {
-      quickActions = `
-        <div class="card-actions-quick">
-          <button onclick="quickSetResolution(${item.rowIndex}, 'Open', '-')" class="btn-quick reopen">🔓 Reopen BAP</button>
-        </div>
-      `;
-    }
 
     let actionButtons = '';
     if (isAdminLoggedIn) {
@@ -292,182 +168,12 @@ function renderCards(reports) {
           <strong>Kronologi / Keterangan:</strong><br>
           ${item.keterangan}
         </div>
-
-        ${quickActions}
-
         <div class="card-footer">
           ${actionButtons}
         </div>
       </div>
     `;
     grid.appendChild(card);
-  });
-}
-
-// Aksi Cepat Penyelesaian BAP (Tarik Pabrik / Klaim / Reopen)
-function quickSetResolution(rowIndex, newStatus, newPenyelesaian) {
-  showToast(`⏳ Memperbarui Status BAP ke ${newStatus}...`);
-
-  const statusBap = encodeURIComponent(newStatus);
-  const penyelesaian = encodeURIComponent(newPenyelesaian);
-
-  const updateUrl = `${SCRIPT_URL}?action=UPDATE&rowIndex=${rowIndex}&statusBap=${statusBap}&penyelesaian=${penyelesaian}&callback=onQuickUpdateComplete`;
-
-  window.onQuickUpdateComplete = function(response) {
-    if (response && response.result === 'success') {
-      showToast(`Status BAP Berhasil Diperbarui (${newStatus})!`);
-      setTimeout(loadReports, 1000);
-    } else {
-      alert("Gagal memperbarui status BAP.");
-    }
-  };
-
-  const script = document.createElement('script');
-  script.src = updateUrl;
-  document.body.appendChild(script);
-}
-
-function updateSummary(reports) {
-  const totalBa = reports.length;
-  let totalQty = 0;
-  let totalOpen = 0;
-  let totalClose = 0;
-
-  reports.forEach(item => {
-    let qtyNum = 0;
-    if (item.qty) {
-      const match = item.qty.toString().match(/\d+/);
-      if (match) qtyNum = parseInt(match[0], 10);
-    }
-    totalQty += qtyNum;
-
-    const status = (item.statusBap || "Open").toString().trim().toLowerCase();
-    if (status === "close") {
-      totalClose++;
-    } else {
-      totalOpen++;
-    }
-  });
-
-  document.getElementById('statTotalBa').textContent = totalBa;
-  document.getElementById('statTotalQty').textContent = `${totalQty} Pcs`;
-  document.getElementById('statTotalOpen').textContent = totalOpen;
-  document.getElementById('statTotalClose').textContent = totalClose;
-}
-
-function applyFilters() {
-  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-  const selectedMonth = document.getElementById('monthFilter').value;
-  const selectedType = document.getElementById('typeFilter').value;
-  const selectedStatus = document.getElementById('statusFilter').value;
-
-  const filtered = allReports.filter(item => {
-    const matchesSearch = 
-      (item.project && item.project.toLowerCase().includes(searchTerm)) ||
-      (item.sku && item.sku.toLowerCase().includes(searchTerm)) ||
-      (item.noBa && item.noBa.toLowerCase().includes(searchTerm)) ||
-      (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm));
-
-    const matchesMonth = (selectedMonth === 'ALL') || (item.monthKey === selectedMonth);
-    const matchesType = (selectedType === 'ALL') || (item.tipeDamage === selectedType);
-    const matchesStatus = (selectedStatus === 'ALL') || ((item.statusBap || "Open") === selectedStatus);
-
-    return matchesSearch && matchesMonth && matchesType && matchesStatus;
-  });
-
-  renderCards(filtered);
-  updateSummary(filtered);
-}
-
-function renderAnalytics() {
-  const matrixBody = document.getElementById('projectMatrixBody');
-  matrixBody.innerHTML = '';
-
-  const groups = {};
-  let totalInbound = 0;
-  let totalHandling = 0;
-  const monthGroup = {};
-
-  allReports.forEach(item => {
-    const p = item.project || "Unassigned";
-    const m = item.monthKey || "Lainnya";
-    const type = item.tipeDamage || "Inbound";
-    const key = `${p}_${m}`;
-
-    let qtyNum = 0;
-    if (item.qty) {
-      const match = item.qty.toString().match(/\d+/);
-      if (match) qtyNum = parseInt(match[0], 10);
-    }
-
-    if (!groups[key]) {
-      groups[key] = { project: p, month: m, inboundQty: 0, handlingQty: 0, totalBa: 0 };
-    }
-
-    if (type.toLowerCase() === 'inbound') {
-      groups[key].inboundQty += qtyNum;
-      totalInbound += qtyNum;
-    } else {
-      groups[key].handlingQty += qtyNum;
-      totalHandling += qtyNum;
-    }
-    groups[key].totalBa += 1;
-
-    if (!monthGroup[m]) monthGroup[m] = 0;
-    monthGroup[m] += qtyNum;
-  });
-
-  Object.values(groups).forEach(g => {
-    const totalQty = g.inboundQty + g.handlingQty;
-    matrixBody.innerHTML += `
-      <tr>
-        <td><strong>${g.project}</strong></td>
-        <td>${g.month}</td>
-        <td><span style="color:#34d399; font-weight:600;">${g.inboundQty} Pcs</span></td>
-        <td><span style="color:#fbbf24; font-weight:600;">${g.handlingQty} Pcs</span></td>
-        <td><strong>${totalQty} Pcs</strong></td>
-        <td>${g.totalBa} BA</td>
-      </tr>
-    `;
-  });
-
-  renderTrendChart(Object.keys(monthGroup), Object.values(monthGroup));
-  renderRatioChart(totalInbound, totalHandling);
-}
-
-function renderTrendChart(labels, data) {
-  const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
-  if (trendChartInstance) trendChartInstance.destroy();
-
-  trendChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Total Qty Damage',
-        data: data,
-        backgroundColor: '#3b82f6',
-        borderRadius: 6
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
-  });
-}
-
-function renderRatioChart(inboundQty, handlingQty) {
-  const ctx = document.getElementById('typeRatioChart').getContext('2d');
-  if (ratioChartInstance) ratioChartInstance.destroy();
-
-  ratioChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Inbound', 'Handling'],
-      datasets: [{
-        data: [inboundQty, handlingQty],
-        backgroundColor: ['#10b981', '#f59e0b']
-      }]
-    },
-    options: { responsive: true }
   });
 }
 
@@ -485,6 +191,7 @@ function openEditModal(rowIndex) {
   document.getElementById('editPenyelesaian').value = (item.penyelesaian && item.penyelesaian !== "-") ? item.penyelesaian : "Tarik Pabrik";
 
   togglePenyelesaian('editStatusBap', 'editPenyelesaianGroup');
+
   document.getElementById('editModal').classList.remove('hidden');
 }
 
@@ -546,6 +253,65 @@ function deleteReport(rowIndex) {
   const script = document.createElement('script');
   script.src = deleteUrl;
   document.body.appendChild(script);
+}
+
+// Fungsi Menghitung & Memperbarui Tampilan Ringkasan Statistik
+function updateSummary(reports) {
+  const totalBa = reports.length;
+  
+  let totalQty = 0;
+  let totalOpen = 0;
+  let totalClose = 0;
+
+  reports.forEach(item => {
+    // Ambil hanya karakter angka dari string Qty (misal: "3 Pcs" -> 3)
+    let qtyNum = 0;
+    if (item.qty) {
+      const match = item.qty.toString().match(/\d+/);
+      if (match) {
+        qtyNum = parseInt(match[0], 10);
+      }
+    }
+    totalQty += qtyNum;
+
+    // Hitung Status BAP
+    const status = (item.statusBap || "Open").toString().trim().toLowerCase();
+    if (status === "close") {
+      totalClose++;
+    } else {
+      totalOpen++;
+    }
+  });
+
+  // Tampilkan angka ke kotak Summary
+  document.getElementById('statTotalBa').textContent = totalBa;
+  document.getElementById('statTotalQty').textContent = `${totalQty} Pcs`;
+  document.getElementById('statTotalOpen').textContent = totalOpen;
+  document.getElementById('statTotalClose').textContent = totalClose;
+}
+
+// Perbarui Fungsi applyFilters() untuk memanggil updateSummary
+function applyFilters() {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const selectedType = document.getElementById('typeFilter').value;
+  const selectedStatus = document.getElementById('statusFilter').value;
+
+  const filtered = allReports.filter(item => {
+    const matchesSearch = 
+      (item.project && item.project.toLowerCase().includes(searchTerm)) ||
+      (item.sku && item.sku.toLowerCase().includes(searchTerm)) ||
+      (item.noBa && item.noBa.toLowerCase().includes(searchTerm)) ||
+      (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm));
+
+    const matchesType = (selectedType === 'ALL') || (item.tipeDamage === selectedType);
+    const matchesStatus = (selectedStatus === 'ALL') || ((item.statusBap || "Open") === selectedStatus);
+
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  // Render Kartu & Ringkasan Statistik
+  renderCards(filtered);
+  updateSummary(filtered);
 }
 
 const fileToBase64 = file => new Promise((resolve, reject) => {
