@@ -1,8 +1,8 @@
 // ==========================================================================
 // KONFIGURASI UTAMA KONEKSI SPREADSHEET & APPS SCRIPT
 // ==========================================================================
-const SPREADSHEET_ID = "10BcwxXBWk2xmTZYl_pRrmEnaljClQ0z6UxdJKKZlUHc"; // ID Spreadsheet Anda
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby230i3SBh-woI0VpHmGaiVKJbxv-pDccMHRnDjOUL059pQOJW-YbN1FMC_tOXn6yGA/exec";   // URL Web App Apps Script Anda
+const SPREADSHEET_ID = "1b8_-ul5N6Zld9O1A-xzgR-zHmkJ7xDSHyAPZgFAnnIg"; // ID Spreadsheet Anda
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZeZ9y2G8_Lvnv160u_T9pjyz7pwMNSx6lgHO6tNjWAU683wphToNTm2BO8QBTOemeIg/exec";   // URL Web App Apps Script Anda
 
 let allReports = [];
 let isAdminLoggedIn = false;
